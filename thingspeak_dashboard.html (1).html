@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor Privado - ESP32</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+        
+        .value {
+            font-size: 3em;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .temp { 
+            color: #e74c3c; 
+        }
+        
+        .hum { 
+            color: #3498db; 
+        }
+        
+        .status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        
+        .normal {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .alerta {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .peligro {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .panico {
+            background: #dc3545;
+            color: white;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+            margin: 10px 0;
+        }
+        
+        .history-item {
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 3px solid #3498db;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        
+        #lastUpdate {
+            text-align: center;
+            color: #7f8c8d;
+            font-style: italic;
+            margin-top: 10px;
+        }
+        
+        .loading {
+            opacity: 0.6;
+        }
+        
+        /* Estilos para botones y controles */
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+            width: calc(100% - 10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #219a52;
+            transform: translateY(-2px);
+        }
+        
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background: #d68910;
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+        
+        .btn-panic {
+            background: #dc3545;
+            color: white;
+            font-size: 1.1em;
+            animation: pulse 2s infinite;
+        }
+        
+        .btn-panic:hover {
+            background: #c82333;
+            transform: scale(1.05);
+        }
+        
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ecf0f1;
+            border-radius: 5px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .modal h3 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .modal-buttons .btn {
+            flex: 1;
+        }
+        
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .history-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .history-controls .btn {
+            flex: 1;
+        }
+        
+        .panic-section {
+            border: 3px solid #dc3545;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            background: #fff5f5;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .value {
+                font-size: 2.5em;
+            }
+            
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .history-controls {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔒 Monitor Privado - ESP32</h1>
+            <p>Datos seguros desde ThingSpeak</p>
+        </div>
+
+        <div class="grid">
+            <!-- Tarjeta de Temperatura -->
+            <div class="card">
+                <h2>🌡️ Temperatura Actual</h2>
+                <div id="tempValue" class="value temp">-- °C</div>
+                <div id="tempStatus" class="status normal">Estado: Normal</div>
+                <div class="info-box">
+                    <strong>Límite:</strong> <span id="tempLimit">30.0°C</span><br>
+                    <strong>Estado:</strong> <span id="tempState">Dentro de límites</span>
+                </div>
+            </div>
+            
+            <!-- Tarjeta de Humedad -->
+            <div class="card">
+                <h2>💧 Humedad Actual</h2>
+                <div id="humValue" class="value hum">-- %</div>
+                <div id="humStatus" class="status normal">Estado: Normal</div>
+                <div class="info-box">
+                    <strong>Límite:</strong> <span id="humLimit">70.0%</span><br>
+                    <strong>Estado:</strong> <span id="humState">Dentro de límites</span>
+                </div>
+            </div>
+            
+            <!-- Tarjeta de Estado del Sistema -->
+            <div class="card">
+                <h2>⚙️ Estado del Sistema</h2>
+                <div id="systemStatus" class="status normal">Sistema: Normal</div>
+                <div class="info-box">
+                    <strong>Última actualización:</strong><br>
+                    <span id="lastUpdate">--</span>
+                </div>
+                <div class="info-box">
+                    <strong>Próxima actualización:</strong><br>
+                    <span id="nextUpdate">--</span>
+                </div>
+                
+                <!-- Botones de Control -->
+                <div class="controls-grid">
+                    <button class="btn btn-success" onclick="guardarDatos()">
+                        💾 Guardar Datos
+                    </button>
+                    <button class="btn btn-primary" onclick="mostrarModalConfig()">
+                        ⚙️ Configurar
+                    </button>
+                    <button class="btn btn-warning" onclick="silenciarAlarma()">
+                        🔇 Silenciar
+                    </button>
+                    <button class="btn btn-success" onclick="normalizarSistema()">
+                        ✅ Normalizar
+                    </button>
+                    <button class="btn btn-primary" onclick="actualizarDatos()">
+                        🔄 Actualizar
+                    </button>
+                </div>
+                
+                <!-- Sección de Pánico -->
+                <div class="panic-section">
+                    <h3>🚨 Botón de Pánico</h3>
+                    <p style="margin-bottom: 15px; color: #dc3545; font-weight: bold;">
+                        Activa la alarma inmediatamente y envía alerta por Telegram
+                    </p>
+                    <button class="btn btn-panic" onclick="mostrarModalPanico()">
+                        🚨 ACTIVAR PÁNICO
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Tarjeta de Historial -->
+            <div class="card">
+                <h2>📋 Historial Reciente</h2>
+                <div id="historyContainer">
+                    <div class="history-item">Cargando historial...</div>
+                </div>
+                
+                <!-- Nuevos botones para el historial -->
+                <div class="history-controls">
+                    <button class="btn btn-primary" onclick="actualizarDatos()">
+                        🔄 Actualizar Historial
+                    </button>
+                    <button class="btn btn-danger" onclick="mostrarModalBorrarHistorial()">
+                        🗑️ Borrar Historial
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Información de Configuración -->
+        <div class="card">
+            <h2>🔧 Información de Configuración</h2>
+            <div class="info-box">
+                <strong>Channel ID:</strong> <span id="channelId">--</span><br>
+                <strong>Estado de conexión:</strong> <span id="connectionStatus">Desconectado</span><br>
+                <strong>Última lectura exitosa:</strong> <span id="lastSuccess">--</span><br>
+                <strong>Alarma silenciada:</strong> <span id="alarmaEstado">No</span><br>
+                <strong>Estado pánico:</strong> <span id="panicoEstado">Inactivo</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Configuración -->
+    <div id="configModal" class="modal">
+        <div class="modal-content">
+            <h3>⚙️ Configurar Límites</h3>
+            <div class="form-group">
+                <label for="nuevaTemp">Límite de Temperatura (°C):</label>
+                <input type="number" id="nuevaTemp" class="form-control" step="0.1" min="0" max="100" value="30.0">
+            </div>
+            <div class="form-group">
+                <label for="nuevaHum">Límite de Humedad (%):</label>
+                <input type="number" id="nuevaHum" class="form-control" step="0.1" min="0" max="100" value="70.0">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-success" onclick="aplicarConfiguracion()">💾 Guardar</button>
+                <button class="btn btn-danger" onclick="cerrarModal()">❌ Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Confirmación de Pánico -->
+    <div id="panicModal" class="modal">
+        <div class="modal-content">
+            <h3 style="color: #dc3545;">🚨 Confirmar Activación de Pánico</h3>
+            <div class="info-box" style="border-left-color: #dc3545;">
+                <strong>⚠️ ADVERTENCIA:</strong><br>
+                Esta acción activará inmediatamente:
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Alarma sonora en el ESP32</li>
+                    <li>Notificación de emergencia por Telegram</li>
+                    <li>Estado de alerta máxima en el sistema</li>
+                </ul>
+                <strong>¿Estás seguro de que quieres activar el modo pánico?</strong>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-panic" onclick="activarPanico()">🚨 SÍ, ACTIVAR PÁNICO</button>
+                <button class="btn btn-primary" onclick="cerrarModalPanico()">❌ Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Confirmación de Borrar Historial -->
+    <div id="borrarHistorialModal" class="modal">
+        <div class="modal-content">
+            <h3 style="color: #e74c3c;">🗑️ Confirmar Borrado de Historial</h3>
+            <div class="info-box" style="border-left-color: #e74c3c;">
+                <strong>⚠️ ADVERTENCIA:</strong><br>
+                Esta acción eliminará permanentemente:
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Todos los registros del historial local</li>
+                    <li>Datos de temperatura y humedad guardados</li>
+                    <li>Estados de alerta anteriores</li>
+                </ul>
+                <strong>El borrado solo afecta a esta sesión del navegador. Los datos en ThingSpeak no se verán afectados.</strong>
+                <br><br>
+                <strong>¿Estás seguro de que quieres borrar el historial?</strong>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-danger" onclick="borrarHistorial()">🗑️ SÍ, BORRAR HISTORIAL</button>
+                <button class="btn btn-primary" onclick="cerrarModalBorrarHistorial()">❌ Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =============================================
+        // CONFIGURACIÓN - REEMPLAZA CON TUS DATOS REALES
+        // =============================================
+        const CONFIG = {
+            CHANNEL_ID: '3148282',  // Reemplaza con tu Channel ID de ThingSpeak
+            API_KEY: 'UCJSDVCOHYN9M95G',  // Reemplaza con tu API Key de lectura
+            WRITE_API_KEY: 'JI002XYUG7JNG3VE',  // Tu Write API Key (la misma del ESP32)
+            LIMITE_TEMP: 30.0,
+            LIMITE_HUM: 70.0
+        };
+
+        // Variables globales
+        let ultimosDatos = null;
+        let historial = [];
+        let alarmaSilenciada = false;
+        let tiempoSilencio = null;
+        let panicoActivado = false;
+        let tiempoPanico = null;
+
+        // =============================================
+        // FUNCIONES NUEVAS PARA EL HISTORIAL
+        // =============================================
+
+        // Función para mostrar modal de confirmación de borrado
+        function mostrarModalBorrarHistorial() {
+            document.getElementById('borrarHistorialModal').style.display = 'flex';
+        }
+
+        // Función para cerrar modal de borrado
+        function cerrarModalBorrarHistorial() {
+            document.getElementById('borrarHistorialModal').style.display = 'none';
+        }
+
+        // Función para borrar el historial
+        function borrarHistorial() {
+            historial = []; // Vaciar el array de historial
+            
+            // Actualizar la vista del historial
+            actualizarVistaHistorial();
+            
+            // Cerrar el modal
+            cerrarModalBorrarHistorial();
+            
+            // Mostrar confirmación
+            alert('✅ Historial borrado correctamente');
+            
+            console.log('Historial borrado. Total de registros:', historial.length);
+        }
+
+        // =============================================
+        // FUNCIONES PARA ENVIAR COMANDOS AL ESP32
+        // =============================================
+
+        // Función para enviar comando a ThingSpeak (Field 5)
+        async function enviarComandoThingSpeak(comando) {
+            // comando: 1=pánico, 2=silencio, 0=normal
+            try {
+                const url = `https://api.thingspeak.com/update?api_key=${CONFIG.WRITE_API_KEY}&field5=${comando}`;
+                console.log("Enviando comando:", url);
+                
+                const response = await fetch(url);
+                const data = await response.text();
+                
+                if (data !== '0') {
+                    console.log(`✅ Comando ${comando} enviado correctamente. ID: ${data}`);
+                    return true;
+                } else {
+                    console.error('❌ Error enviando comando a ThingSpeak');
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ Error de conexión:', error);
+                return false;
+            }
+        }
+
+        // =============================================
+        // FUNCIONES PRINCIPALES DEL DASHBOARD
+        // =============================================
+
+        // Función para actualizar datos desde ThingSpeak
+        async function actualizarDatos() {
+            if (CONFIG.API_KEY === 'TU_API_KEY_DE_LECTURA') {
+                mostrarError('❌ Configura tu API Key en el código JavaScript');
+                return;
+            }
+
+            // Mostrar estado de carga
+            document.body.classList.add('loading');
+            document.getElementById('connectionStatus').textContent = 'Conectando...';
+
+            try {
+                const url = `https://api.thingspeak.com/channels/${CONFIG.CHANNEL_ID}/feeds/last.json?api_key=${CONFIG.API_KEY}`;
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Procesar datos exitosos
+                procesarDatosExitosos(data);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarError('❌ Error conectando con ThingSpeak: ' + error.message);
+            } finally {
+                document.body.classList.remove('loading');
+            }
+        }
+
+        // Función para procesar datos exitosos
+        function procesarDatosExitosos(data) {
+            ultimosDatos = data;
+            
+            // Actualizar temperatura
+            const temp = parseFloat(data.field1);
+            document.getElementById('tempValue').textContent = temp.toFixed(1) + ' °C';
+            actualizarEstadoTemperatura(temp);
+            
+            // Actualizar humedad
+            const hum = parseFloat(data.field2);
+            document.getElementById('humValue').textContent = hum.toFixed(1) + ' %';
+            actualizarEstadoHumedad(hum);
+            
+            // Leer estados del ESP32 desde ThingSpeak
+            const estadoPanico = parseInt(data.field3) || 0;
+            const estadoSilencio = parseInt(data.field4) || 0;
+            
+            // Sincronizar estados locales con el ESP32
+            panicoActivado = (estadoPanico === 1);
+            alarmaSilenciada = (estadoSilencio === 1);
+            
+            // Actualizar información del sistema
+            const fecha = new Date(data.created_at);
+            document.getElementById('lastUpdate').textContent = fecha.toLocaleString('es-ES');
+            document.getElementById('lastSuccess').textContent = fecha.toLocaleString('es-ES');
+            document.getElementById('connectionStatus').textContent = 'Conectado';
+            document.getElementById('channelId').textContent = CONFIG.CHANNEL_ID;
+            
+            // Calcular próxima actualización
+            const nextUpdate = new Date(Date.now() + 30000);
+            document.getElementById('nextUpdate').textContent = nextUpdate.toLocaleString('es-ES');
+            
+            // Agregar al historial
+            agregarAlHistorial(temp, hum, fecha);
+            
+            // Actualizar estado general del sistema
+            actualizarEstadoSistema(temp, hum);
+            
+            // Actualizar estado de la alarma y pánico
+            actualizarEstadoAlarma();
+            actualizarEstadoPanico();
+        }
+
+        // Función para agregar datos al historial
+        function agregarAlHistorial(temp, hum, fecha) {
+            const entrada = {
+                temp: temp,
+                hum: hum,
+                tiempo: fecha.toLocaleTimeString('es-ES'),
+                fecha: fecha.toLocaleDateString('es-ES')
+            };
+            
+            historial.unshift(entrada);
+            
+            // Mantener solo las últimas 10 entradas
+            if (historial.length > 10) {
+                historial = historial.slice(0, 10);
+            }
+            
+            // Actualizar visualización del historial
+            actualizarVistaHistorial();
+        }
+
+        // Función para actualizar la vista del historial
+        function actualizarVistaHistorial() {
+            const container = document.getElementById('historyContainer');
+            container.innerHTML = '';
+            
+            if (historial.length === 0) {
+                container.innerHTML = '<div class="history-item">No hay datos históricos</div>';
+                return;
+            }
+            
+            historial.forEach((entrada, index) => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                
+                const estadoTemp = entrada.temp > CONFIG.LIMITE_TEMP ? '🔴' : '🟢';
+                const estadoHum = entrada.hum > CONFIG.LIMITE_HUM ? '🔴' : '🟢';
+                
+                item.innerHTML = `
+                    ${entrada.tiempo} - 
+                    ${estadoTemp} ${entrada.temp.toFixed(1)}°C - 
+                    ${estadoHum} ${entrada.hum.toFixed(1)}%
+                `;
+                
+                container.appendChild(item);
+            });
+        }
+
+        // =============================================
+        // FUNCIONES DE ESTADO Y VISUALIZACIÓN
+        // =============================================
+
+        function actualizarEstadoTemperatura(temp) {
+            const tempStatus = document.getElementById('tempStatus');
+            const tempState = document.getElementById('tempState');
+            
+            document.getElementById('tempLimit').textContent = CONFIG.LIMITE_TEMP.toFixed(1) + '°C';
+            
+            if (temp > CONFIG.LIMITE_TEMP) {
+                tempStatus.className = panicoActivado ? 'status panico' : 'status peligro';
+                tempStatus.textContent = panicoActivado ? '🚨 PÁNICO ACTIVO' : '⚠️ ALERTA: Temperatura Alta';
+                tempState.textContent = 'FUERA DE LÍMITES';
+                tempState.style.color = '#e74c3c';
+            } else {
+                tempStatus.className = panicoActivado ? 'status panico' : 'status normal';
+                tempStatus.textContent = panicoActivado ? '🚨 PÁNICO ACTIVO' : '✅ Temperatura Normal';
+                tempState.textContent = panicoActivado ? 'MODO EMERGENCIA' : 'Dentro de límites';
+                tempState.style.color = panicoActivado ? '#dc3545' : '#27ae60';
+            }
+        }
+
+        function actualizarEstadoHumedad(hum) {
+            const humStatus = document.getElementById('humStatus');
+            const humState = document.getElementById('humState');
+            
+            document.getElementById('humLimit').textContent = CONFIG.LIMITE_HUM.toFixed(1) + '%';
+            
+            if (hum > CONFIG.LIMITE_HUM) {
+                humStatus.className = panicoActivado ? 'status panico' : 'status peligro';
+                humStatus.textContent = panicoActivado ? '🚨 PÁNICO ACTIVO' : '⚠️ ALERTA: Humedad Alta';
+                humState.textContent = 'FUERA DE LÍMITES';
+                humState.style.color = '#e74c3c';
+            } else {
+                humStatus.className = panicoActivado ? 'status panico' : 'status normal';
+                humStatus.textContent = panicoActivado ? '🚨 PÁNICO ACTIVO' : '✅ Humedad Normal';
+                humState.textContent = panicoActivado ? 'MODO EMERGENCIA' : 'Dentro de límites';
+                humState.style.color = panicoActivado ? '#dc3545' : '#27ae60';
+            }
+        }
+
+        function actualizarEstadoSistema(temp, hum) {
+            const systemStatus = document.getElementById('systemStatus');
+            
+            if (panicoActivado) {
+                systemStatus.className = 'status panico';
+                systemStatus.textContent = '🚨 MODO PÁNICO ACTIVADO';
+            } else if (temp > CONFIG.LIMITE_TEMP || hum > CONFIG.LIMITE_HUM) {
+                systemStatus.className = alarmaSilenciada ? 'status alerta' : 'status peligro';
+                systemStatus.textContent = alarmaSilenciada ? '🔇 ALARMA SILENCIADA' : '🚨 SISTEMA EN ALERTA';
+            } else {
+                systemStatus.className = 'status normal';
+                systemStatus.textContent = '✅ SISTEMA NORMAL';
+            }
+        }
+
+        function actualizarEstadoAlarma() {
+            const alarmaElement = document.getElementById('alarmaEstado');
+            
+            if (alarmaSilenciada) {
+                const tiempoRestante = Math.max(0, Math.ceil((tiempoSilencio - Date.now()) / 1000 / 60));
+                alarmaElement.textContent = `Sí (${tiempoRestante} min restantes)`;
+                alarmaElement.style.color = '#f39c12';
+            } else {
+                alarmaElement.textContent = 'No';
+                alarmaElement.style.color = '#27ae60';
+            }
+        }
+
+        function actualizarEstadoPanico() {
+            const panicoElement = document.getElementById('panicoEstado');
+            
+            if (panicoActivado) {
+                const tiempoRestante = Math.max(0, Math.ceil((tiempoPanico - Date.now()) / 1000 / 60));
+                panicoElement.textContent = `Activo (${tiempoRestante} min restantes)`;
+                panicoElement.style.color = '#dc3545';
+                panicoElement.style.fontWeight = 'bold';
+            } else {
+                panicoElement.textContent = 'Inactivo';
+                panicoElement.style.color = '#27ae60';
+                panicoElement.style.fontWeight = 'normal';
+            }
+        }
+
+        // =============================================
+        // FUNCIONES DE LOS BOTONES DE CONTROL
+        // =============================================
+
+        async function activarPanico() {
+            const exito = await enviarComandoThingSpeak('1');
+            if (exito) {
+                panicoActivado = true;
+                tiempoPanico = Date.now() + (60 * 60 * 1000);
+                alarmaSilenciada = false;
+                tiempoSilencio = null;
+                
+                actualizarEstadoPanico();
+                actualizarEstadoAlarma();
+                
+                if (ultimosDatos) {
+                    const temp = parseFloat(ultimosDatos.field1);
+                    const hum = parseFloat(ultimosDatos.field2);
+                    actualizarEstadoTemperatura(temp);
+                    actualizarEstadoHumedad(hum);
+                    actualizarEstadoSistema(temp, hum);
+                }
+                
+                cerrarModalPanico();
+                alert('🚨 MODO PÁNICO ACTIVADO\n\nComando enviado al ESP32 correctamente.');
+                
+                setTimeout(() => {
+                    panicoActivado = false;
+                    tiempoPanico = null;
+                    actualizarEstadoPanico();
+                    if (ultimosDatos) {
+                        const temp = parseFloat(ultimosDatos.field1);
+                        const hum = parseFloat(ultimosDatos.field2);
+                        actualizarEstadoTemperatura(temp);
+                        actualizarEstadoHumedad(hum);
+                        actualizarEstadoSistema(temp, hum);
+                    }
+                }, 60 * 60 * 1000);
+            } else {
+                alert('❌ Error enviando comando de pánico. Revisa la conexión.');
+            }
+        }
+
+        async function silenciarAlarma() {
+            if (panicoActivado) {
+                alert('❌ No se puede silenciar durante el modo pánico');
+                return;
+            }
+            
+            const exito = await enviarComandoThingSpeak('2');
+            if (exito) {
+                alarmaSilenciada = true;
+                tiempoSilencio = Date.now() + (30 * 60 * 1000);
+                
+                actualizarEstadoAlarma();
+                if (ultimosDatos) {
+                    const temp = parseFloat(ultimosDatos.field1);
+                    const hum = parseFloat(ultimosDatos.field2);
+                    actualizarEstadoSistema(temp, hum);
+                }
+                
+                alert('🔇 Alarma silenciada por 30 minutos\n\nComando enviado al ESP32 correctamente.');
+                
+                setTimeout(() => {
+                    alarmaSilenciada = false;
+                    tiempoSilencio = null;
+                    actualizarEstadoAlarma();
+                    if (ultimosDatos) {
+                        const temp = parseFloat(ultimosDatos.field1);
+                        const hum = parseFloat(ultimosDatos.field2);
+                        actualizarEstadoSistema(temp, hum);
+                    }
+                }, 30 * 60 * 1000);
+            } else {
+                alert('❌ Error enviando comando de silencio. Revisa la conexión.');
+            }
+        }
+
+        async function normalizarSistema() {
+            const exito = await enviarComandoThingSpeak('0');
+            if (exito) {
+                panicoActivado = false;
+                alarmaSilenciada = false;
+                tiempoPanico = null;
+                tiempoSilencio = null;
+                
+                actualizarEstadoPanico();
+                actualizarEstadoAlarma();
+                
+                if (ultimosDatos) {
+                    const temp = parseFloat(ultimosDatos.field1);
+                    const hum = parseFloat(ultimosDatos.field2);
+                    actualizarEstadoTemperatura(temp);
+                    actualizarEstadoHumedad(hum);
+                    actualizarEstadoSistema(temp, hum);
+                }
+                
+                alert('✅ Sistema normalizado\n\nComando enviado al ESP32 correctamente.');
+            } else {
+                alert('❌ Error enviando comando de normalización. Revisa la conexión.');
+            }
+        }
+
+        function guardarDatos() {
+            if (!ultimosDatos) {
+                alert('❌ No hay datos para guardar');
+                return;
+            }
+            
+            const temp = parseFloat(ultimosDatos.field1);
+            const hum = parseFloat(ultimosDatos.field2);
+            const fecha = new Date(ultimosDatos.created_at);
+            
+            const contenido = `Datos del Sensor ESP32\n
+Fecha: ${fecha.toLocaleString('es-ES')}
+Temperatura: ${temp.toFixed(1)} °C
+Humedad: ${hum.toFixed(1)} %
+Límites: Temp=${CONFIG.LIMITE_TEMP}°C, Hum=${CONFIG.LIMITE_HUM}%
+Estado: ${panicoActivado ? 'PÁNICO ACTIVADO' : (temp > CONFIG.LIMITE_TEMP || hum > CONFIG.LIMITE_HUM ? 'ALERTA' : 'NORMAL')}
+Alarma silenciada: ${alarmaSilenciada ? 'Sí' : 'No'}`;
+
+            const blob = new Blob([contenido], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `datos_sensor_${fecha.toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            alert('✅ Datos guardados correctamente');
+        }
+
+        function mostrarModalConfig() {
+            document.getElementById('nuevaTemp').value = CONFIG.LIMITE_TEMP;
+            document.getElementById('nuevaHum').value = CONFIG.LIMITE_HUM;
+            document.getElementById('configModal').style.display = 'flex';
+        }
+
+        function cerrarModal() {
+            document.getElementById('configModal').style.display = 'none';
+        }
+
+        function aplicarConfiguracion() {
+            const nuevaTemp = parseFloat(document.getElementById('nuevaTemp').value);
+            const nuevaHum = parseFloat(document.getElementById('nuevaHum').value);
+            
+            if (isNaN(nuevaTemp) || isNaN(nuevaHum)) {
+                alert('❌ Por favor ingresa valores válidos');
+                return;
+            }
+            
+            if (nuevaTemp < 0 || nuevaTemp > 100 || nuevaHum < 0 || nuevaHum > 100) {
+                alert('❌ Los valores deben estar entre 0 y 100');
+                return;
+            }
+            
+            CONFIG.LIMITE_TEMP = nuevaTemp;
+            CONFIG.LIMITE_HUM = nuevaHum;
+            
+            if (ultimosDatos) {
+                const temp = parseFloat(ultimosDatos.field1);
+                const hum = parseFloat(ultimosDatos.field2);
+                actualizarEstadoTemperatura(temp);
+                actualizarEstadoHumedad(hum);
+                actualizarEstadoSistema(temp, hum);
+            }
+            
+            cerrarModal();
+            alert('✅ Límites actualizados correctamente');
+        }
+
+        function mostrarModalPanico() {
+            document.getElementById('panicModal').style.display = 'flex';
+        }
+
+        function cerrarModalPanico() {
+            document.getElementById('panicModal').style.display = 'none';
+        }
+
+        function mostrarError(mensaje) {
+            document.getElementById('connectionStatus').textContent = 'Error';
+            document.getElementById('systemStatus').className = 'status peligro';
+            document.getElementById('systemStatus').textContent = mensaje;
+            console.error(mensaje);
+        }
+
+        // =============================================
+        // INICIALIZACIÓN
+        // =============================================
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Iniciando dashboard con comandos...');
+            actualizarDatos();
+        });
+
+        setInterval(actualizarDatos, 30000);
+
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                actualizarDatos();
+            }
+        });
+
+        if (CONFIG.API_KEY === 'TU_API_KEY_DE_LECTURA') {
+            document.addEventListener('DOMContentLoaded', function() {
+                mostrarError('❌ CONFIGURA TU API KEY en el código JavaScript');
+            });
+        }
+
+        window.addEventListener('click', function(event) {
+            const modals = ['configModal', 'panicModal', 'borrarHistorialModal'];
+            modals.forEach(modalId => {
+                const modal = document.getElementById(modalId);
+                if (event.target === modal) {
+                    if (modalId === 'configModal') cerrarModal();
+                    if (modalId === 'panicModal') cerrarModalPanico();
+                    if (modalId === 'borrarHistorialModal') cerrarModalBorrarHistorial();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
