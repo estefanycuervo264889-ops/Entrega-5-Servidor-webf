@@ -1,1 +1,1 @@
-# Entrega-5-Servidor-webf
+Sistema IoT que monitorea temperatura y humedad usando un ESP32 con sensor DHT11. Incluye un bot de Telegram para recibir alertas y control remoto, dashboard web en ThingSpeak para visualización en tiempo real, y un sistema de alarmas con tonos diferenciados para cada tipo de alerta. Perfecto para monitoreo ambiental residencial con notificaciones instantáneas y control desde cualquier lugar.
